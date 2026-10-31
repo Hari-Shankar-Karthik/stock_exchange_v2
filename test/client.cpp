@@ -55,6 +55,7 @@ int main(int argc)
     asio::ip::tcp::socket sock(ioc);
     asio::ip::tcp::endpoint serverEndpoint(asio::ip::make_address(SERVER_IP_ADDRESS), SERVER_PORT);
     sock.connect(serverEndpoint);
+    std::cerr << "[CLIENT] Connected Successfully" << std::endl;
 
     const bool b = argc > 1;
     std::thread sender(senderFunc, std::ref(sock), b), receiver(receiverFunc, std::ref(ioc), std::ref(sock), b);

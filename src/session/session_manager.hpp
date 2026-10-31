@@ -1,11 +1,12 @@
 #pragma once
 
+#include <atomic>
 #include <asio.hpp>
-#include <cstddef>
+#include <cstdint>
+#include <iostream>
 #include <memory>
 #include <mutex>
 #include <unordered_map>
-#include <utility>
 
 #include "core/constants.hpp"
 #include "core/order.hpp"
@@ -16,26 +17,25 @@
 
 namespace exchange::session
 {
-    using exchange::core::ClientId;
-    using exchange::core::EVENT_BUFFER_SIZE;
-    using exchange::core::INCOMING_BUFFER_SIZE;
-    using exchange::core::MAX_CLIENTS;
-    using exchange::core::Order;
-    using exchange::core::TradeEvent;
+    using core::ClientId;
+    using core::EVENT_BUFFER_SIZE;
+    using core::INCOMING_BUFFER_SIZE;
+    using core::MAX_CLIENTS;
+    using core::Order;
+    using core::TradeEvent;
     using utils::SlabAllocator;
     using utils::SPSCQueue;
-
-    // template <typename K, typename V, std::size_t N>
-    // using SlabUnorderedMap = std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, SlabAllocator<std::pair<const K, V>, N>>;
 
     class SessionManager
     {
     public:
-        SessionManager(SPSCQueue<Order, INCOMING_BUFFER_SIZE> &_incoming, SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &_outgoing, const std::string_view serverIpAddr, const uint16_t serverPort)
-            : incoming(_incoming), context(), acceptor(context), serverEndpoint(asio::ip::make_address(serverIpAddr), serverPort), outgoing(_outgoing)
+        SessionManager(SPSCQueue<Order, INCOMING_BUFFER_SIZE> &_incoming, SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &_outgoing, const std::string_view serverIpAddr, const std::uint16_t serverPort)
+            : incoming(_incoming), context(1), acceptor(context), outgoing(_outgoing)
         {
+            // TODO: Is concurrency_hint == 1 is OK here?
+            asio::ip::tcp::endpoint serverEndpoint(asio::ip::make_address(serverIpAddr), serverPort);
             acceptor.open(serverEndpoint.protocol());
-            acceptor.set_option(asio::socket_base::reuse_address(true));
+            acceptor.set_option(asio::socket_base::reuse_address(true)); // TODO: Is this debug only?
 
             acceptor.bind(serverEndpoint);
             acceptor.listen(); // TODO: What should the backlog be?
@@ -69,38 +69,48 @@ namespace exchange::session
 
                 for (const auto clientId : {e.buyerId, e.sellerId})
                 {
-                    int fd;
+                    std::lock_guard lg(mtx);
+                    auto it = fds.find(clientId);
+                    if (it == fds.end())
                     {
-                        std::lock_guard<std::mutex> lg(mtx);
-                        if (!fds.contains(clientId))
-                        {
-                            continue;
-                        }
-                        fd = fds[clientId];
+                        continue;
                     }
+                    int fd = it->second;
 
-                    // This should be non-blocking (sleeps if the send buffer is full)
-                    // TODO: Queue up the unsent messages for when the buffer clears
-                    // TODO: Kick the client based on the number of unsent messages
-                    ::send(fd, &e, sizeof(e), 0);
+                    // Send while holding the lock to prevent this client from disconnecting right now
+                    if (::send(fd, &e, sizeof(e), MSG_DONTWAIT | MSG_NOSIGNAL) < static_cast<ssize_t>(sizeof(e)))
+                    {
+                        // Message was partially copied/not copied at all into the send buffer
+                        // Client will be kicked for not ACKing quickly enough
+                        // TODO: Queue up the unsent messages for when the buffer clears and kick based on queue size
+                        // All disconnects will be handled by the receiver thread only
+                        asio::post(
+                            context,
+                            [this, clientId]()
+                            {
+                                disconnectClient(clientId);
+                            });
+                    }
                 }
             }
         }
 
     private:
+        // TODO: Look at field ordering
         // Receiver-only
-        uint32_t numClients{0};
+        std::uint32_t numClients{0};
         ClientId currClientId{0};
         SlabAllocator<asio::ip::tcp::socket, MAX_CLIENTS> socketAllocator;
         SlabAllocator<Order, MAX_CLIENTS> messageAllocator;
         SPSCQueue<Order, INCOMING_BUFFER_SIZE> &incoming;
         asio::io_context context;
         asio::ip::tcp::acceptor acceptor;
-        asio::ip::tcp::endpoint serverEndpoint;
+        std::unordered_map<int, std::pair<asio::ip::tcp::socket *, Order *>> slots;
 
         // Shared between sender and receiver
+        // TODO: There has to be a better way to ensure no false sharing
         alignas(64) std::mutex mtx;
-        std::unordered_map<ClientId, int> fds; // TODO: This flies against the zero-allocation policy
+        std::unordered_map<ClientId, int> fds; // TODO: Use the improved SlabAllocator for this
 
         // Sender-only
         alignas(64) SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &outgoing;
@@ -112,18 +122,20 @@ namespace exchange::session
                 {
                     if (!ec)
                     {
-                        socket.set_option(asio::ip::tcp::no_delay(true)); // Prevent bandwidth-saving delays
+                        socket.set_option(asio::ip::tcp::no_delay(true));
                         ClientId clientId = ++currClientId;
-
-                        {
-                            int fd = socket.native_handle();
-                            std::lock_guard<std::mutex> lg(mtx);
-                            fds[clientId] = fd;
-                        }
+                        std::cerr << "Accepted connection from clientId=" << clientId << std::endl; // TODO: Temporary
 
                         auto socketPtr = socketAllocator.allocate(1);
                         auto messagePtr = messageAllocator.allocate(1);
                         std::construct_at(socketPtr, std::move(socket));
+
+                        int fd = socketPtr->native_handle();
+                        {
+                            std::lock_guard lg(mtx);
+                            fds[clientId] = fd;
+                        }
+                        slots[fd] = std::make_pair(socketPtr, messagePtr);
 
                         if (++numClients < MAX_CLIENTS)
                         {
@@ -134,13 +146,21 @@ namespace exchange::session
                 });
         }
 
-        void readMessage(asio::ip::tcp::socket *socketPtr, Order *messagePtr, ClientId clientId)
+        void readMessage(asio::ip::tcp::socket *socketPtr, Order *messagePtr, const ClientId clientId)
         {
             asio::async_read(
                 *socketPtr,
                 asio::buffer(messagePtr, sizeof(Order)),
                 [this, socketPtr, messagePtr, clientId](const asio::error_code &ec, std::size_t bytesRead)
                 {
+                    // If a disconnect was issued while waiting, the read would have been cancelled
+                    // The disconnect may occur after the read but before the handler
+                    // Don't have to lock because the only concurrent access (by the sender) is read-only
+                    if (!fds.contains(clientId))
+                    {
+                        return;
+                    }
+
                     // TODO: Be more robust by using bytesRead
                     if (!ec)
                     {
@@ -151,15 +171,36 @@ namespace exchange::session
                     else
                     {
                         // This client has closed their connection
-                        {
-                            std::lock_guard<std::mutex> lg(mtx);
-                            fds.erase(clientId);
-                        }
-
-                        socketAllocator.deallocate(socketPtr, 1);
-                        messageAllocator.deallocate(messagePtr, 1);
+                        disconnectClient(clientId);
                     }
                 });
+        }
+
+        void disconnectClient(const ClientId clientId)
+        {
+            int fd;
+            {
+                std::lock_guard lg(mtx);
+                auto it = fds.find(clientId);
+                if (it == fds.end())
+                {
+                    return;
+                }
+                fd = it->second;
+                fds.erase(it);
+            }
+
+            auto [socketPtr, messagePtr] = slots[fd];
+            slots.erase(fd);
+            std::destroy_at(socketPtr);
+            socketAllocator.deallocate(socketPtr, 1);
+            messageAllocator.deallocate(messagePtr, 1);
+
+            if (numClients-- == MAX_CLIENTS)
+            {
+                // Restart new connections in the receiver thread
+                acceptConnection();
+            }
         }
     };
 }
