@@ -13,6 +13,7 @@ namespace exchange::core
     constexpr std::size_t MAX_RESTING_ORDERS = 1 << 10; // 100'000'000
 
     constexpr std::size_t MAX_CLIENTS = 8; // TODO: Review this number
+    // constexpr std::size_t MAX_QUEUED_EVENTS = 16; // TODO: Review this number
 
     constexpr std::string_view SERVER_IP_ADDRESS = "127.0.0.1";
     constexpr std::uint16_t SERVER_PORT = 6969;

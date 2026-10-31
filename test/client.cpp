@@ -43,7 +43,7 @@ void senderFunc(asio::ip::tcp::socket &sock, const bool b)
     }
 }
 
-void receiverFunc(asio::io_context &ioc, asio::ip::tcp::socket &sock)
+void receiverFunc(asio::io_context &ioc, asio::ip::tcp::socket &sock, const bool b)
 {
     readFill(sock);
     ioc.run();
@@ -56,7 +56,8 @@ int main(int argc)
     asio::ip::tcp::endpoint serverEndpoint(asio::ip::make_address(SERVER_IP_ADDRESS), SERVER_PORT);
     sock.connect(serverEndpoint);
 
-    std::thread sender(senderFunc, std::ref(sock), argc > 1), receiver(receiverFunc, std::ref(ioc), std::ref(sock));
+    const bool b = argc > 1;
+    std::thread sender(senderFunc, std::ref(sock), b), receiver(receiverFunc, std::ref(ioc), std::ref(sock), b);
 
     sender.join();
     receiver.join();

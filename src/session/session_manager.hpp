@@ -35,7 +35,6 @@ namespace exchange::session
             : incoming(_incoming), context(), acceptor(context), serverEndpoint(asio::ip::make_address(serverIpAddr), serverPort), outgoing(_outgoing)
         {
             acceptor.open(serverEndpoint.protocol());
-            acceptor.set_option(asio::ip::tcp::no_delay(true)); // For the writing thread (TODO: Check that this works correctly)
             acceptor.set_option(asio::socket_base::reuse_address(true));
 
             acceptor.bind(serverEndpoint);
@@ -70,14 +69,19 @@ namespace exchange::session
 
                 for (const auto clientId : {e.buyerId, e.sellerId})
                 {
-                    std::lock_guard<std::mutex> lg(mtx);
-                    if (!fds.contains(clientId))
+                    int fd;
                     {
-                        continue;
+                        std::lock_guard<std::mutex> lg(mtx);
+                        if (!fds.contains(clientId))
+                        {
+                            continue;
+                        }
+                        fd = fds[clientId];
                     }
 
-                    int fd = fds[clientId];
-                    // TODO: This should be non-blocking to prevent adversarial clients
+                    // This should be non-blocking (sleeps if the send buffer is full)
+                    // TODO: Queue up the unsent messages for when the buffer clears
+                    // TODO: Kick the client based on the number of unsent messages
                     ::send(fd, &e, sizeof(e), 0);
                 }
             }
@@ -108,6 +112,7 @@ namespace exchange::session
                 {
                     if (!ec)
                     {
+                        socket.set_option(asio::ip::tcp::no_delay(true)); // Prevent bandwidth-saving delays
                         ClientId clientId = ++currClientId;
 
                         {
