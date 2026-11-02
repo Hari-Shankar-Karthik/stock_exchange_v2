@@ -2,13 +2,14 @@
 #include <iostream>
 #include <thread>
 
+#include "config/config.hpp"
 #include "src/core/constants.hpp"
 #include "src/core/order.hpp"
 #include "src/core/trade_event.hpp"
 
+using exchange::config::SERVER_IP_ADDRESS;
+using exchange::config::SERVER_PORT;
 using exchange::core::Order;
-using exchange::core::SERVER_IP_ADDRESS;
-using exchange::core::SERVER_PORT;
 using exchange::core::Side;
 using exchange::core::TradeEvent;
 

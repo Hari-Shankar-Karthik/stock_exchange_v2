@@ -29,7 +29,10 @@ namespace exchange::session
     class SessionManager
     {
     public:
-        SessionManager(SPSCQueue<Order, INCOMING_BUFFER_SIZE> &_incoming, SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &_outgoing, const std::string_view serverIpAddr, const std::uint16_t serverPort)
+        SessionManager(SPSCQueue<Order, INCOMING_BUFFER_SIZE> &_incoming,
+                       SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &_outgoing,
+                       const std::string_view serverIpAddr,
+                       const std::uint16_t serverPort)
             : incoming(_incoming), context(1), acceptor(context), outgoing(_outgoing)
         {
             // TODO: Is concurrency_hint == 1 is OK here?
@@ -124,7 +127,6 @@ namespace exchange::session
                     {
                         socket.set_option(asio::ip::tcp::no_delay(true));
                         ClientId clientId = ++currClientId;
-                        std::cerr << "Accepted connection from clientId=" << clientId << std::endl; // TODO: Temporary
 
                         auto socketPtr = socketAllocator.allocate(1);
                         auto messagePtr = messageAllocator.allocate(1);

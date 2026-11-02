@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream> // TODO: Temporary
 #include <map>
 
 #include "book/price_level.hpp"
@@ -12,11 +13,13 @@
 
 namespace exchange::book
 {
+    using core::ClientId;
     using core::EVENT_BUFFER_SIZE;
     using core::MAX_LEVELS;
     using core::MAX_RESTING_ORDERS;
     using core::Order;
     using core::Price;
+    using core::Quantity;
     using core::Side;
     using core::TradeEvent;
     using utils::SlabAllocator;
@@ -28,14 +31,15 @@ namespace exchange::book
     class OrderBook
     {
     public:
-        OrderBook(SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &_events) noexcept
-            : events(_events), askHalf(), bidHalf()
+        OrderBook(SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &_tradeEvents,
+                  SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &_marketData) noexcept
+            : tradeEvents(_tradeEvents), marketData(_marketData)
         {
         }
 
         void process(Order o) noexcept
         {
-            std::cerr << "[ENGINE] Processing Order(sequenceNumber=" << o.sequenceNumber << ", clientId=" << o.clientId << ", price=" << o.price << ", quantity=" << o.quantity << ", side=" << (o.side == Side::BUY ? "BUY" : "SELL") << ")" << std::endl;
+            std::cerr << "[ENGINE] Processing " << o << std::endl;
             if (o.side == Side::BUY)
             {
                 for (auto it = askHalf.begin(); it != askHalf.end() && it->first <= o.price && o.quantity;)
@@ -45,8 +49,7 @@ namespace exchange::book
                     {
                         if (o.quantity >= head->o.quantity)
                         {
-                            TradeEvent e{o.clientId, head->o.clientId, head->o.price, head->o.quantity};
-                            events.push(e);
+                            publishTrade(o.clientId, head->o.clientId, head->o.price, head->o.quantity);
                             o.quantity -= head->o.quantity;
                             const auto newHead = head->next;
                             restingOrderAllocator.deallocate(head, 1);
@@ -54,8 +57,7 @@ namespace exchange::book
                         }
                         else
                         {
-                            TradeEvent e{o.clientId, head->o.clientId, head->o.price, o.quantity};
-                            events.push(e);
+                            publishTrade(o.clientId, head->o.clientId, head->o.price, o.quantity);
                             head->o.quantity -= o.quantity;
                             o.quantity = 0;
                         }
@@ -86,8 +88,7 @@ namespace exchange::book
                     {
                         if (o.quantity >= head->o.quantity)
                         {
-                            TradeEvent e{head->o.clientId, o.clientId, head->o.price, head->o.quantity};
-                            events.push(e);
+                            publishTrade(head->o.clientId, o.clientId, head->o.price, head->o.quantity);
                             o.quantity -= head->o.quantity;
                             const auto newHead = head->next;
                             restingOrderAllocator.deallocate(head, 1);
@@ -95,8 +96,7 @@ namespace exchange::book
                         }
                         else
                         {
-                            TradeEvent e{head->o.clientId, o.clientId, head->o.price, o.quantity};
-                            events.push(e);
+                            publishTrade(head->o.clientId, o.clientId, head->o.price, o.quantity);
                             head->o.quantity -= o.quantity;
                             o.quantity = 0;
                         }
@@ -121,11 +121,20 @@ namespace exchange::book
         }
 
     private:
-        SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &events;
+        // Events represent individual fill reports, market data is broadcast to all subscribers
+        SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &tradeEvents;
+        SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &marketData;
         // TODO: [META] Maybe both maps should share an allocator? Better cache locality?
         SlabMap<Price, PriceLevel, std::less<Price>, MAX_LEVELS> askHalf;
         SlabMap<Price, PriceLevel, std::greater<Price>, MAX_LEVELS> bidHalf;
         // TODO: [FUTURE] Have a common allocator across symbols for better cache locality.
         SlabAllocator<RestingOrder, MAX_RESTING_ORDERS> restingOrderAllocator;
+
+        void publishTrade(const ClientId buyerId, const ClientId sellerId, const Price price, const Quantity quantity) noexcept
+        {
+            TradeEvent e{buyerId, sellerId, price, quantity};
+            tradeEvents.push(e);
+            marketData.push(e);
+        }
     };
 }

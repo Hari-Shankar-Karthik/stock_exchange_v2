@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <cstdint>
 
 namespace exchange::core
@@ -17,4 +18,17 @@ namespace exchange::core
     };
 
     using SequenceNumber = std::uint64_t;
+
+    inline std::ostream &operator<<(std::ostream &os, const Side &s) noexcept
+    {
+        if (s == Side::BUY)
+        {
+            os << "BUY";
+        }
+        else
+        {
+            os << "SELL";
+        }
+        return os;
+    }
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <type_traits>
 
 #include "core/types.hpp"
@@ -14,6 +15,15 @@ namespace exchange::core
         Price price;
         Quantity quantity;
     };
+
+    inline std::ostream &operator<<(std::ostream &os, const TradeEvent &e) noexcept
+    {
+        os << "TradeEvent(buyerId=" << e.buyerId
+           << ", sellerId=" << e.sellerId
+           << ", price=" << e.price
+           << ", quantity=" << e.quantity << ")";
+        return os;
+    }
 
     static_assert(sizeof(TradeEvent) == 32);
     static_assert(alignof(TradeEvent) == 32);

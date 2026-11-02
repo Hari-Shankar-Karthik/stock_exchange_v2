@@ -19,8 +19,8 @@ namespace exchange::matching
     class MatchingEngine
     {
     public:
-        MatchingEngine(SPSCQueue<Order, INCOMING_BUFFER_SIZE> &_incoming, SPSCQueue<Order, LOG_BUFFER_SIZE> &_log, SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &_events) noexcept
-            : incoming(_incoming), log(_log), book(_events)
+        MatchingEngine(SPSCQueue<Order, INCOMING_BUFFER_SIZE> &_incoming, SPSCQueue<Order, LOG_BUFFER_SIZE> &_log, SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &_tradeEvents, SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &_marketData) noexcept
+            : incoming(_incoming), log(_log), book(_tradeEvents, _marketData)
         {
             // TODO: When there are multiple symbols, maintain an array mapping from Symbol to OrderBook.
         }
