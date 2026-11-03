@@ -10,6 +10,7 @@
 using exchange::config::SERVER_IP_ADDRESS;
 using exchange::config::SERVER_PORT;
 using exchange::core::Order;
+using exchange::core::OrderType;
 using exchange::core::Side;
 using exchange::core::TradeEvent;
 
@@ -35,8 +36,9 @@ void senderFunc(asio::ip::tcp::socket &sock)
     // while (true)
     // {
     Order o;
-    o.price = 1010;
-    o.quantity = 10;
+    o.orderType = OrderType::IOC;
+    o.price = 1000;
+    o.quantity = 100;
     o.side = Side::BUY;
 
     asio::write(sock, asio::buffer(&o, sizeof(o)));

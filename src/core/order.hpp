@@ -7,22 +7,25 @@
 
 namespace exchange::core
 {
-    struct alignas(32) Order
+    struct alignas(64) Order
     {
-        core::SequenceNumber sequenceNumber; // to be set by the exchange
-        core::ClientId clientId;
-        core::Price price;
-        core::Quantity quantity;
+        core::OrderType orderType;
         core::Side side;
+        core::SequenceNumber sequenceNumber; // set by the exchange
+        core::ClientId clientId;             // set by the exchange
+        core::Price price;                   // only relevant for LIMIT orders
+        core::Quantity quantity;
     };
 
     inline std::ostream &operator<<(std::ostream &os, const Order &o)
     {
-        os << "Order(sequenceNumber=" << o.sequenceNumber
+        os << "Order(orderType=" << o.orderType
+           << ", side=" << o.side
+           << ", sequenceNumber=" << o.sequenceNumber
            << ", clientId=" << o.clientId
            << ", price=" << o.price
-           << ", quantity=" << o.quantity
-           << ", side=" << o.side << ")";
+           << ", quantity=" << o.quantity << ")";
+
         return os;
     }
 

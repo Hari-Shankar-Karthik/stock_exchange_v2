@@ -38,7 +38,7 @@ namespace exchange::matching
                 // TODO: Pre-trade risk/other checks?
 
                 // sequence it
-                o.sequenceNumber = ++sequenceNumber;
+                o.sequenceNumber = ++currSequenceNumber;
 
                 // log it
                 log.push(o);
@@ -52,7 +52,7 @@ namespace exchange::matching
         // thee queues lives in global memory
         SPSCQueue<Order, INCOMING_BUFFER_SIZE> &incoming;
         SPSCQueue<Order, LOG_BUFFER_SIZE> &log;
-        std::uint64_t sequenceNumber{0};
+        std::uint64_t currSequenceNumber{0};
         OrderBook book; // for now, only dealing with a single symbol
     };
 }

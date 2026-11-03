@@ -19,6 +19,7 @@ namespace exchange::book
     using core::MAX_LEVELS;
     using core::MAX_RESTING_ORDERS;
     using core::Order;
+    using core::OrderType;
     using core::Price;
     using core::Quantity;
     using core::Side;
@@ -38,9 +39,14 @@ namespace exchange::book
         {
         }
 
+        // TODO: Clean and speed this code up
         void process(Order o) noexcept
         {
             std::cerr << "[ENGINE] Processing " << o << std::endl;
+            if (o.orderType == OrderType::MARKET)
+            {
+                o.price = o.side == Side::BUY ? INT64_MAX : INT64_MIN;
+            }
             if (o.side == Side::BUY)
             {
                 for (auto it = askHalf.begin(); it != askHalf.end() && it->first <= o.price && o.quantity;)
@@ -48,18 +54,18 @@ namespace exchange::book
                     RestingOrder *&head = it->second.head;
                     while (head && o.quantity)
                     {
-                        if (o.quantity >= head->o.quantity)
+                        if (o.quantity >= head->quantity)
                         {
-                            publishTrade(o.clientId, head->o.clientId, head->o.price, head->o.quantity);
-                            o.quantity -= head->o.quantity;
+                            publishTrade(o.clientId, head->clientId, it->first, head->quantity);
+                            o.quantity -= head->quantity;
                             const auto newHead = head->next;
                             restingOrderAllocator.deallocate(head, 1);
                             head = newHead;
                         }
                         else
                         {
-                            publishTrade(o.clientId, head->o.clientId, head->o.price, o.quantity);
-                            head->o.quantity -= o.quantity;
+                            publishTrade(o.clientId, head->clientId, it->first, o.quantity);
+                            head->quantity -= o.quantity;
                             o.quantity = 0;
                         }
                     }
@@ -72,11 +78,10 @@ namespace exchange::book
                         ++it;
                     }
                 }
-                if (o.quantity)
+                if (o.quantity && o.orderType == OrderType::LIMIT)
                 {
                     RestingOrder *ptr = restingOrderAllocator.allocate(1);
-                    ptr->o = o;
-                    ptr->next = nullptr;
+                    std::construct_at(ptr, o);
                     bidHalf[o.price].insert(ptr);
                 }
             }
@@ -87,18 +92,18 @@ namespace exchange::book
                     RestingOrder *&head = it->second.head;
                     while (head && o.quantity)
                     {
-                        if (o.quantity >= head->o.quantity)
+                        if (o.quantity >= head->quantity)
                         {
-                            publishTrade(head->o.clientId, o.clientId, head->o.price, head->o.quantity);
-                            o.quantity -= head->o.quantity;
+                            publishTrade(head->clientId, o.clientId, it->first, head->quantity);
+                            o.quantity -= head->quantity;
                             const auto newHead = head->next;
                             restingOrderAllocator.deallocate(head, 1);
                             head = newHead;
                         }
                         else
                         {
-                            publishTrade(head->o.clientId, o.clientId, head->o.price, o.quantity);
-                            head->o.quantity -= o.quantity;
+                            publishTrade(head->clientId, o.clientId, it->first, o.quantity);
+                            head->quantity -= o.quantity;
                             o.quantity = 0;
                         }
                     }
@@ -111,11 +116,10 @@ namespace exchange::book
                         ++it;
                     }
                 }
-                if (o.quantity)
+                if (o.quantity && o.orderType == OrderType::LIMIT)
                 {
                     RestingOrder *ptr = restingOrderAllocator.allocate(1);
-                    ptr->o = o;
-                    ptr->next = nullptr;
+                    std::construct_at(ptr, o);
                     askHalf[o.price].insert(ptr);
                 }
             }
