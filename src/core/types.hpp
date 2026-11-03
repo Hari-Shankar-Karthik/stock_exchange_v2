@@ -19,6 +19,8 @@ namespace exchange::core
 
     using SequenceNumber = std::uint64_t;
 
+    using ExecutionId = std::uint64_t;
+
     inline std::ostream &operator<<(std::ostream &os, const Side &s) noexcept
     {
         if (s == Side::BUY)

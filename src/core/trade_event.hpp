@@ -7,9 +7,10 @@
 
 namespace exchange::core
 {
-    struct alignas(32) TradeEvent
+    struct alignas(64) TradeEvent
     {
         // TODO: Self-trade protection
+        ExecutionId execId;
         ClientId buyerId;
         ClientId sellerId;
         Price price;
@@ -18,15 +19,16 @@ namespace exchange::core
 
     inline std::ostream &operator<<(std::ostream &os, const TradeEvent &e) noexcept
     {
-        os << "TradeEvent(buyerId=" << e.buyerId
+        os << "TradeEvent(execId=" << e.execId
+           << ", buyerId=" << e.buyerId
            << ", sellerId=" << e.sellerId
            << ", price=" << e.price
            << ", quantity=" << e.quantity << ")";
         return os;
     }
 
-    static_assert(sizeof(TradeEvent) == 32);
-    static_assert(alignof(TradeEvent) == 32);
+    static_assert(sizeof(TradeEvent) == 64);
+    static_assert(alignof(TradeEvent) == 64);
     static_assert(std::is_trivially_default_constructible_v<TradeEvent>);
     static_assert(std::is_trivially_copyable_v<TradeEvent>);
     static_assert(std::is_trivially_copyable_v<TradeEvent>);

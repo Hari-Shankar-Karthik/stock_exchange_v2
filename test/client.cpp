@@ -24,7 +24,7 @@ void readFill(asio::ip::tcp::socket &sock)
         {
             if (!ec)
             {
-                std::cout << "Fill(buyerId=" << e.buyerId << ", sellerId=" << e.sellerId << ", price=" << e.price << ", quantity=" << e.quantity << ")" << std::endl;
+                std::cout << e << std::endl;
                 readFill(sock);
             }
         });

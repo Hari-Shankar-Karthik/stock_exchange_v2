@@ -15,6 +15,7 @@ namespace exchange::book
 {
     using core::ClientId;
     using core::EVENT_BUFFER_SIZE;
+    using core::ExecutionId;
     using core::MAX_LEVELS;
     using core::MAX_RESTING_ORDERS;
     using core::Order;
@@ -122,6 +123,7 @@ namespace exchange::book
 
     private:
         // Events represent individual fill reports, market data is broadcast to all subscribers
+        ExecutionId currExecId{0};
         SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &tradeEvents;
         SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &marketData;
         // TODO: [META] Maybe both maps should share an allocator? Better cache locality?
@@ -132,7 +134,7 @@ namespace exchange::book
 
         void publishTrade(const ClientId buyerId, const ClientId sellerId, const Price price, const Quantity quantity) noexcept
         {
-            TradeEvent e{buyerId, sellerId, price, quantity};
+            TradeEvent e{++currExecId, buyerId, sellerId, price, quantity};
             tradeEvents.push(e);
             marketData.push(e);
         }

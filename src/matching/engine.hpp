@@ -35,6 +35,8 @@ namespace exchange::matching
                     continue;
                 }
 
+                // TODO: Pre-trade risk/other checks?
+
                 // sequence it
                 o.sequenceNumber = ++sequenceNumber;
 
