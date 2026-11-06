@@ -11,7 +11,7 @@ namespace exchange::book
 
     struct alignas(32) RestingOrder
     {
-        RestingOrder(const Order o_) : next(nullptr), clientId(o_.clientId), quantity(o_.quantity) {}
+        RestingOrder(const Order o_) : clientId(o_.clientId), quantity(o_.quantity), next(nullptr) {}
 
         ClientId clientId;
         Quantity quantity;
