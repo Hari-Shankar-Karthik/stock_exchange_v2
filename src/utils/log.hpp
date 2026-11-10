@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <cstddef>
+#include <cstring>
 #include <filesystem>
 #include <fcntl.h>
 #include <sys/mman.h>

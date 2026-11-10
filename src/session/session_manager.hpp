@@ -1,19 +1,10 @@
 #pragma once
 
-#include <atomic>
 #include <asio.hpp>
-#include <cstdint>
-#include <iostream>
+#include <cstddef>
 #include <memory>
 #include <mutex>
 #include <unordered_map>
-
-#include "core/constants.hpp"
-#include "core/order.hpp"
-#include "core/trade_event.hpp"
-#include "core/types.hpp"
-#include "utils/slab_allocator.hpp"
-#include "utils/spsc_queue.hpp"
 
 namespace exchange::session
 {

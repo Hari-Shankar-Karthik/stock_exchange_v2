@@ -3,22 +3,20 @@
 #include <asio.hpp>
 
 #include "config/config.hpp"
-#include "core/constants.hpp"
 #include "core/trade_event.hpp"
-#include "utils/spsc_queue.hpp"
+#include "helper/types.hpp"
 
 namespace exchange::market_data
 {
     using config::MULTICAST_IP_ADDR;
     using config::MULTICAST_PORT;
-    using core::EVENT_BUFFER_SIZE;
     using core::TradeEvent;
-    using utils::SPSCQueue;
+    using helper::TradeQueue;
 
     class MarketDataPublisher
     {
     public:
-        MarketDataPublisher(SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &_marketData)
+        MarketDataPublisher(TradeQueue &_marketData)
             : context(1), socket(context), marketData(_marketData)
         {
             asio::ip::udp::endpoint multicastEndpoint(asio::ip::make_address(MULTICAST_IP_ADDR), MULTICAST_PORT);
@@ -45,6 +43,6 @@ namespace exchange::market_data
     private:
         asio::io_context context;
         asio::ip::udp::socket socket;
-        SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &marketData;
+        TradeQueue &marketData;
     };
 }

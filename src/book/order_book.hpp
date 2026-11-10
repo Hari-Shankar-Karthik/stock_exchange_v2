@@ -1,31 +1,24 @@
 #pragma once
 
-#include <iostream> // TODO: Temporary
 #include <map>
 
 #include "book/price_level.hpp"
 #include "core/constants.hpp"
-#include "core/order.hpp"
-#include "core/trade_event.hpp"
+#include "book/resting_order.hpp"
 #include "core/types.hpp"
+#include "helper/types.hpp"
 #include "utils/slab_allocator.hpp"
-#include "utils/spsc_queue.hpp"
 
 namespace exchange::book
 {
-    using core::ClientId;
-    using core::EVENT_BUFFER_SIZE;
+    using namespace helper;
     using core::ExecutionId;
     using core::MAX_LEVELS;
     using core::MAX_RESTING_ORDERS;
-    using core::Order;
     using core::OrderType;
     using core::Price;
-    using core::Quantity;
     using core::Side;
-    using core::TradeEvent;
     using utils::SlabAllocator;
-    using utils::SPSCQueue;
 
     template <typename K, typename V, typename Compare, std::size_t N>
     using SlabMap = std::map<K, V, Compare, SlabAllocator<std::pair<const K, V>, N>>;
@@ -128,8 +121,8 @@ namespace exchange::book
     private:
         // Events represent individual fill reports, market data is broadcast to all subscribers
         ExecutionId currExecId{0};
-        SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &tradeEvents;
-        SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &marketData;
+        TradeQueue &tradeEvents;
+        TradeQueue &marketData;
         // TODO: [META] Maybe both maps should share an allocator? Better cache locality?
         SlabMap<Price, PriceLevel, std::less<Price>, MAX_LEVELS> askHalf;
         SlabMap<Price, PriceLevel, std::greater<Price>, MAX_LEVELS> bidHalf;

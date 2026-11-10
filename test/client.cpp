@@ -40,7 +40,7 @@ void senderFunc(asio::ip::tcp::socket &sock, const bool b)
         o.side = b ? Side::SELL : Side::BUY;
 
         asio::write(sock, asio::buffer(&o, sizeof(o)));
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
 
