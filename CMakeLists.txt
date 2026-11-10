@@ -48,8 +48,9 @@ target_link_options(exchange_common INTERFACE
 
 # Server
 add_executable(exchange src/server.cpp)
-# add_executable(exchange src/demo.cpp)
+add_executable(parse src/parser.cpp)
 target_link_libraries(exchange PRIVATE exchange_common)
+target_link_libraries(parse PRIVATE exchange_common)
 
 # Tests: every .cpp under test/ becomes its own executable, named after the file (test/client.cpp -> client)
 file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/test/*.cpp)

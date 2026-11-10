@@ -1,3 +1,4 @@
+#include <chrono>
 #include <thread>
 
 #include "config/config.hpp"
@@ -7,30 +8,47 @@
 #include "market_data/publisher.hpp"
 #include "matching/engine.hpp"
 #include "session/session_manager.hpp"
+#include "utils/log.hpp"
 #include "utils/spsc_queue.hpp"
 
 using exchange::config::SERVER_IP_ADDRESS;
 using exchange::config::SERVER_PORT;
 using exchange::core::EVENT_BUFFER_SIZE;
 using exchange::core::INCOMING_BUFFER_SIZE;
-using exchange::core::LOG_BUFFER_SIZE;
 using exchange::core::Order;
+using exchange::core::REPLAY_LOG_PAGES;
 using exchange::core::TradeEvent;
 using exchange::market_data::MarketDataPublisher;
 using exchange::session::SessionManager;
+using exchange::utils::Log;
 using exchange::utils::SPSCQueue;
 
 SPSCQueue<Order, INCOMING_BUFFER_SIZE> incomingQueue;
-SPSCQueue<Order, LOG_BUFFER_SIZE> loggingQueue;
+Log<Order, REPLAY_LOG_PAGES> replayLog(std::chrono::steady_clock::now().time_since_epoch().count());
 SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> tradeEventQueue, marketDataQueue;
 
 SessionManager sessionManager(incomingQueue, tradeEventQueue, SERVER_IP_ADDRESS, SERVER_PORT);
 
-void exchangeFunc()
+void senderFunc()
 {
-    exchange::matching::MatchingEngine me(incomingQueue, loggingQueue, tradeEventQueue, marketDataQueue);
+    sessionManager.sender();
+}
+
+void receiverFunc()
+{
+    sessionManager.receiver();
+}
+
+void matcherFunc()
+{
+    exchange::matching::MatchingEngine me(incomingQueue, replayLog, tradeEventQueue, marketDataQueue);
     std::cerr << "[ENGINE] startup complete" << std::endl;
     me.run();
+}
+
+void loggerFunc()
+{
+    replayLog.drain();
 }
 
 void publisherFunc()
@@ -41,12 +59,9 @@ void publisherFunc()
 
 int main()
 {
-    std::thread sender(&SessionManager::sender, &sessionManager);
-    std::thread receiver(&SessionManager::receiver, &sessionManager);
-    std::thread exchange(exchangeFunc);
-    std::thread publisher(publisherFunc);
-
-    sender.join();
-    exchange.join();
-    receiver.join();
+    std::jthread matcher(matcherFunc);
+    std::jthread logger(loggerFunc);
+    std::jthread publisher(publisherFunc);
+    std::jthread sender(senderFunc);
+    std::jthread receiver(receiverFunc);
 }

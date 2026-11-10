@@ -42,7 +42,7 @@ namespace exchange::book
         // TODO: Clean and speed this code up
         void process(Order o) noexcept
         {
-            std::cerr << "[ENGINE] Processing " << o << std::endl;
+            // std::cerr << "[ENGINE] Processing " << o << std::endl;
             if (o.orderType == OrderType::MARKET)
             {
                 o.price = o.side == Side::BUY ? INT64_MAX : INT64_MIN;
