@@ -35,7 +35,7 @@ namespace exchange::utils
         }
 
         // called by the producer
-        bool push(T ele) noexcept
+        bool push(const T &ele) noexcept
         {
             const auto currentTail = tail.load(std::memory_order_relaxed);
             // check fullness

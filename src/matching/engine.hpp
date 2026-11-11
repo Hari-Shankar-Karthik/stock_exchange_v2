@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/order.hpp"
 #include "book/order_book.hpp"
 #include "helper/types.hpp"
 
@@ -19,7 +20,7 @@ namespace exchange::matching
 
         void run() noexcept
         {
-            Order o;
+            AlignedOrder o;
             while (true)
             {
                 if (!incoming.pop(o))

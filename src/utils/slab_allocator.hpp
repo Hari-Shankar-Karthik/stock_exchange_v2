@@ -10,7 +10,6 @@ namespace exchange::utils
     class SlabAllocator
     {
         static_assert(sizeof(T) >= sizeof(void *), "Cannot use SlabAllocator for small types");
-        // TODO: SlabMap is complaining over this. For now I have cache-aligned Slot itself.
         // static_assert(alignof(T) >= 64 || sizeof(T) == alignof(T), "Allocation may straddle cache lines");
 
     public:

@@ -7,6 +7,7 @@
 #include "book/resting_order.hpp"
 #include "core/types.hpp"
 #include "helper/types.hpp"
+#include "utils/cache_aligned.hpp"
 #include "utils/slab_allocator.hpp"
 
 namespace exchange::book
@@ -18,6 +19,7 @@ namespace exchange::book
     using core::OrderType;
     using core::Price;
     using core::Side;
+    using utils::CacheAligned;
     using utils::SlabAllocator;
 
     template <typename K, typename V, typename Compare, std::size_t N>
@@ -26,8 +28,7 @@ namespace exchange::book
     class OrderBook
     {
     public:
-        OrderBook(SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &_tradeEvents,
-                  SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &_marketData) noexcept
+        OrderBook(TradeQueue &_tradeEvents, TradeQueue &_marketData) noexcept
             : tradeEvents(_tradeEvents), marketData(_marketData)
         {
         }
@@ -52,7 +53,7 @@ namespace exchange::book
                             publishTrade(o.clientId, head->clientId, it->first, head->quantity);
                             o.quantity -= head->quantity;
                             const auto newHead = head->next;
-                            restingOrderAllocator.deallocate(head, 1);
+                            restingOrderAllocator.deallocate(static_cast<AlignedRestingOrder *>(head), 1);
                             head = newHead;
                         }
                         else
@@ -90,7 +91,7 @@ namespace exchange::book
                             publishTrade(head->clientId, o.clientId, it->first, head->quantity);
                             o.quantity -= head->quantity;
                             const auto newHead = head->next;
-                            restingOrderAllocator.deallocate(head, 1);
+                            restingOrderAllocator.deallocate(static_cast<AlignedRestingOrder *>(head), 1);
                             head = newHead;
                         }
                         else
@@ -127,7 +128,7 @@ namespace exchange::book
         SlabMap<Price, PriceLevel, std::less<Price>, MAX_LEVELS> askHalf;
         SlabMap<Price, PriceLevel, std::greater<Price>, MAX_LEVELS> bidHalf;
         // TODO: [FUTURE] Have a common allocator across symbols for better cache locality.
-        SlabAllocator<RestingOrder, MAX_RESTING_ORDERS> restingOrderAllocator;
+        SlabAllocator<AlignedRestingOrder, MAX_RESTING_ORDERS> restingOrderAllocator;
 
         void publishTrade(const ClientId buyerId, const ClientId sellerId, const Price price, const Quantity quantity) noexcept
         {

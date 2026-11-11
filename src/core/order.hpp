@@ -4,10 +4,11 @@
 #include <type_traits>
 
 #include "core/types.hpp"
+#include "utils/cache_aligned.hpp"
 
 namespace exchange::core
 {
-    struct alignas(64) Order
+    struct Order
     {
         core::OrderType orderType;
         core::Side side;
@@ -16,6 +17,9 @@ namespace exchange::core
         core::Price price;                   // only relevant for LIMIT orders
         core::Quantity quantity;
     };
+
+    using utils::CacheAligned;
+    using AlignedOrder = CacheAligned<Order>;
 
     inline std::ostream &operator<<(std::ostream &os, const Order &o)
     {
@@ -32,6 +36,6 @@ namespace exchange::core
     static_assert(std::is_trivially_default_constructible_v<Order>);
     static_assert(std::is_standard_layout_v<Order>);
     static_assert(std::is_trivially_copyable_v<Order>);
-    static_assert(sizeof(Order) == alignof(Order), "Order may straddle cache lines");
-    static_assert(sizeof(Order) <= 64U, "Order does not fit in a cache line");
+    static_assert(sizeof(AlignedOrder) == alignof(AlignedOrder), "Order may straddle cache lines");
+    static_assert(sizeof(AlignedOrder) <= 64U, "Order does not fit in a cache line");
 }

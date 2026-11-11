@@ -14,8 +14,10 @@
 namespace exchange::session
 {
     using namespace exchange::helper;
+    using core::AlignedOrder;
     using core::ClientId;
     using core::MAX_CLIENTS;
+    using core::Order;
     using utils::SlabAllocator;
 
     class SessionManager
@@ -96,11 +98,11 @@ namespace exchange::session
         std::uint32_t numClients{0};
         ClientId currClientId{0};
         SlabAllocator<asio::ip::tcp::socket, MAX_CLIENTS> socketAllocator;
-        SlabAllocator<Order, MAX_CLIENTS> messageAllocator;
+        SlabAllocator<AlignedOrder, MAX_CLIENTS> messageAllocator;
         OrderQueue &incoming;
         asio::io_context context;
         asio::ip::tcp::acceptor acceptor;
-        std::unordered_map<int, std::pair<asio::ip::tcp::socket *, Order *>> slots;
+        std::unordered_map<int, std::pair<asio::ip::tcp::socket *, AlignedOrder *>> slots;
 
         // Shared between sender and receiver
         // TODO: There has to be a better way to ensure no false sharing
@@ -140,7 +142,7 @@ namespace exchange::session
                 });
         }
 
-        void readMessage(asio::ip::tcp::socket *socketPtr, Order *messagePtr, const ClientId clientId)
+        void readMessage(asio::ip::tcp::socket *socketPtr, AlignedOrder *messagePtr, const ClientId clientId)
         {
             asio::async_read(
                 *socketPtr,
