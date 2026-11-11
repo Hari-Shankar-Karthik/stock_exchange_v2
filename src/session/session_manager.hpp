@@ -9,6 +9,7 @@
 #include "core/constants.hpp"
 #include "core/types.hpp"
 #include "helper/types.hpp"
+#include "sync/sync_variables.hpp"
 #include "utils/slab_allocator.hpp"
 
 namespace exchange::session
@@ -18,6 +19,9 @@ namespace exchange::session
     using core::ClientId;
     using core::MAX_CLIENTS;
     using core::Order;
+    using sync::isIncomingClosed;
+    using sync::isProcessingClosed;
+    using sync::killSwitch;
     using utils::SlabAllocator;
 
     class SessionManager
@@ -48,16 +52,19 @@ namespace exchange::session
         void receiver()
         {
             acceptConnection();
-            while (true)
+            // TODO: Exit the loop based on signal from main thread
+            while (!killSwitch.load(std::memory_order_acquire))
             {
                 context.poll();
             }
+
+            isIncomingClosed.store(true, std::memory_order_release);
         }
 
         void sender()
         {
             TradeEvent e;
-            while (true)
+            while (!isProcessingClosed.load(std::memory_order_acquire))
             {
                 if (!outgoing.pop(e))
                 {

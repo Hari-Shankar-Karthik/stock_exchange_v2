@@ -3,11 +3,14 @@
 #include "core/order.hpp"
 #include "book/order_book.hpp"
 #include "helper/types.hpp"
+#include "sync/sync_variables.hpp"
 
 namespace exchange::matching
 {
     using namespace helper;
     using book::OrderBook;
+    using sync::isIncomingClosed;
+    using sync::isProcessingClosed;
 
     class MatchingEngine
     {
@@ -21,7 +24,7 @@ namespace exchange::matching
         void run() noexcept
         {
             AlignedOrder o;
-            while (true)
+            while (!isIncomingClosed.load(std::memory_order_acquire))
             {
                 if (!incoming.pop(o))
                 {
@@ -39,6 +42,8 @@ namespace exchange::matching
                 // process it
                 book.process(o);
             }
+
+            isProcessingClosed.store(true, std::memory_order_release);
         }
 
     private:

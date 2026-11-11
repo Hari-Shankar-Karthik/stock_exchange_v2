@@ -5,6 +5,7 @@
 #include "config/config.hpp"
 #include "core/trade_event.hpp"
 #include "helper/types.hpp"
+#include "sync/sync_variables.hpp"
 
 namespace exchange::market_data
 {
@@ -12,6 +13,7 @@ namespace exchange::market_data
     using config::MULTICAST_PORT;
     using core::TradeEvent;
     using helper::TradeQueue;
+    using sync::isProcessingClosed;
 
     class MarketDataPublisher
     {
@@ -27,7 +29,7 @@ namespace exchange::market_data
         void run()
         {
             TradeEvent e;
-            while (true)
+            while (!isProcessingClosed.load(std::memory_order_acquire))
             {
                 if (!marketData.pop(e))
                 {

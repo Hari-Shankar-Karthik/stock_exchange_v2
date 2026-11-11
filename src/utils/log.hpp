@@ -80,9 +80,9 @@ namespace exchange::utils
             }
         }
 
-        void drain() noexcept
+        void drain(const std::atomic<bool> &done) noexcept
         {
-            while (true)
+            while (!done.load(std::memory_order_acquire))
             {
                 if (pageNumber.load(std::memory_order_acquire) != (drainOffset & PAGE_MASK))
                 {

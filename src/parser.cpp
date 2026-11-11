@@ -9,7 +9,7 @@ using exchange::core::AlignedOrder;
 int main()
 {
     // TODO: Make this more robust
-    int fd = open("/home/theta/Hari/coding/stock_exchange_v2/replay_log/18749297956937.log", O_RDONLY);
+    int fd = open("/home/theta/Hari/coding/stock_exchange_v2/replay_log/25764190581743.log", O_RDONLY);
     if (fd < 0)
     {
         perror("open");
@@ -30,7 +30,7 @@ int main()
         {
             break;
         }
-        std::cout << "Read back order " << o << std::endl;
+        std::cout << o << std::endl;
         offset += bytesRead;
     }
 

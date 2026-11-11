@@ -5,11 +5,14 @@
 #include "market_data/publisher.hpp"
 #include "matching/engine.hpp"
 #include "session/session_manager.hpp"
+#include "sync/sync_variables.hpp"
 
 using namespace exchange::helper;
 using exchange::config::SERVER_IP_ADDRESS;
 using exchange::config::SERVER_PORT;
 using exchange::session::SessionManager;
+using exchange::sync::isProcessingClosed;
+using exchange::sync::killSwitch;
 
 OrderQueue incomingQueue;
 ReplayLog replayLog(std::chrono::steady_clock::now().time_since_epoch().count());
@@ -36,7 +39,7 @@ void matcherFunc()
 
 void loggerFunc()
 {
-    replayLog.drain();
+    replayLog.drain(isProcessingClosed);
 }
 
 void publisherFunc()
@@ -47,9 +50,18 @@ void publisherFunc()
 
 int main()
 {
+    std::ios::sync_with_stdio(false);
+    std::cin.tie(nullptr);
+    std::cout.tie(nullptr);
+
     std::jthread matcher(matcherFunc);
     std::jthread logger(loggerFunc);
     std::jthread publisher(publisherFunc);
     std::jthread sender(senderFunc);
     std::jthread receiver(receiverFunc);
+
+    char c;
+    std::cin.get(c);
+
+    killSwitch.store(true, std::memory_order_release);
 }
