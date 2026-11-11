@@ -48,7 +48,7 @@ namespace exchange::utils
             }
         }
 
-        ~Log()
+        ~Log() noexcept
         {
             // Drain the last incomplete page
             drainPage();

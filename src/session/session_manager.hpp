@@ -6,22 +6,23 @@
 #include <mutex>
 #include <unordered_map>
 
+#include "core/constants.hpp"
+#include "core/types.hpp"
+#include "helper/types.hpp"
+#include "utils/slab_allocator.hpp"
+
 namespace exchange::session
 {
+    using namespace exchange::helper;
     using core::ClientId;
-    using core::EVENT_BUFFER_SIZE;
-    using core::INCOMING_BUFFER_SIZE;
     using core::MAX_CLIENTS;
-    using core::Order;
-    using core::TradeEvent;
     using utils::SlabAllocator;
-    using utils::SPSCQueue;
 
     class SessionManager
     {
     public:
-        SessionManager(SPSCQueue<Order, INCOMING_BUFFER_SIZE> &_incoming,
-                       SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &_outgoing,
+        SessionManager(OrderQueue &_incoming,
+                       TradeQueue &_outgoing,
                        const std::string_view serverIpAddr,
                        const std::uint16_t serverPort)
             : incoming(_incoming), context(1), acceptor(context), outgoing(_outgoing)
@@ -96,7 +97,7 @@ namespace exchange::session
         ClientId currClientId{0};
         SlabAllocator<asio::ip::tcp::socket, MAX_CLIENTS> socketAllocator;
         SlabAllocator<Order, MAX_CLIENTS> messageAllocator;
-        SPSCQueue<Order, INCOMING_BUFFER_SIZE> &incoming;
+        OrderQueue &incoming;
         asio::io_context context;
         asio::ip::tcp::acceptor acceptor;
         std::unordered_map<int, std::pair<asio::ip::tcp::socket *, Order *>> slots;
@@ -107,7 +108,7 @@ namespace exchange::session
         std::unordered_map<ClientId, int> fds; // TODO: Use the improved SlabAllocator for this
 
         // Sender-only
-        alignas(64) SPSCQueue<TradeEvent, EVENT_BUFFER_SIZE> &outgoing;
+        alignas(64) TradeQueue &outgoing;
 
         void acceptConnection()
         {
