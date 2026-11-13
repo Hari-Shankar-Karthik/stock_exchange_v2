@@ -3,9 +3,9 @@
 #include <thread>
 
 #include "config/config.hpp"
-#include "src/core/constants.hpp"
-#include "src/core/order.hpp"
-#include "src/core/trade_event.hpp"
+#include "core/constants.hpp"
+#include "core/order.hpp"
+#include "core/trade_event.hpp"
 
 using exchange::config::SERVER_IP_ADDRESS;
 using exchange::config::SERVER_PORT;
@@ -50,7 +50,7 @@ void receiverFunc(asio::io_context &ioc, asio::ip::tcp::socket &sock, const bool
     ioc.run();
 }
 
-int main(int argc)
+int main(int argc, char *argv[])
 {
     asio::io_context ioc;
     asio::ip::tcp::socket sock(ioc);

@@ -3,8 +3,8 @@
 #include <map>
 
 #include "book/price_level.hpp"
-#include "core/constants.hpp"
 #include "book/resting_order.hpp"
+#include "core/constants.hpp"
 #include "core/types.hpp"
 #include "helper/types.hpp"
 #include "utils/cache_aligned.hpp"

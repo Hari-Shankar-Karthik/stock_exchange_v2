@@ -1,0 +1,10 @@
+set(ASIO_INCLUDE_DIR "$ENV{HOME}/asio-1.38.2/include" CACHE PATH "Asio include dir")
+if(NOT EXISTS "${ASIO_INCLUDE_DIR}/asio.hpp")
+    message(FATAL_ERROR "asio.hpp not found in ${ASIO_INCLUDE_DIR}")
+endif()
+add_library(asio INTERFACE)
+add_library(asio::asio ALIAS asio)
+target_include_directories(asio SYSTEM INTERFACE ${ASIO_INCLUDE_DIR})
+target_compile_definitions(asio INTERFACE ASIO_STANDALONE)
+target_compile_definitions(asio INTERFACE
+    ASIO_STANDALONE $<$<CONFIG:Release>:ASIO_NO_EXCEPTIONS>)
