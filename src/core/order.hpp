@@ -10,12 +10,12 @@ namespace exchange::core
 {
     struct Order
     {
-        core::OrderType orderType;
-        core::Side side;
-        core::SequenceNumber sequenceNumber; // set by the exchange
-        core::ClientId clientId;             // set by the exchange
-        core::Price price;                   // only relevant for LIMIT orders
-        core::Quantity quantity;
+        OrderType orderType;
+        Side side;
+        SequenceNumber sequenceNumber; // set by the exchange
+        ClientId clientId;             // set by the exchange
+        Price price;                   // only relevant for LIMIT orders
+        Quantity quantity;
     };
 
     using utils::CacheAligned;

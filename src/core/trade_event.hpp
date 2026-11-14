@@ -15,6 +15,8 @@ namespace exchange::core
         ClientId sellerId;
         Price price;
         Quantity quantity;
+
+        bool operator==(const TradeEvent &other) const noexcept = default;
     };
 
     inline std::ostream &operator<<(std::ostream &os, const TradeEvent &e) noexcept
